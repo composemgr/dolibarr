@@ -1,0 +1,55 @@
+# nginx proxy address - http://172.17.0.1:8071
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "5m"
+    max-file: "1"
+
+services:
+  dolibarr:
+    image: tuxgasy/dolibarr:latest
+    container_name: dolibarr-app
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - dolibarr
+    ports:
+      - "8071:80"
+    environment:
+      TZ: ${TZ:-America/New_York}
+    volumes:
+      - ./rootfs/data/dolibarr:/data
+      - ./rootfs/config/dolibarr:/config
+    depends_on:
+      - dolibarr-db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  dolibarr-db:
+    image: mariadb:11
+    container_name: dolibarr-db
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - dolibarr
+    environment:
+      TZ: ${TZ:-America/New_York}
+      MARIADB_DATABASE: ${DB_CREATE_DATABASE_NAME:-dolibarr}
+      MARIADB_USER: ${DB_USER_NAME:-dolibarr}
+      MARIADB_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
+      MARIADB_ROOT_PASSWORD: ${DB_ADMIN_PASS:-changeme_root_password}
+    volumes:
+      - ./rootfs/db/mariadb/dolibarr:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  dolibarr:
+    external: false
