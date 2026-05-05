@@ -50,9 +50,9 @@ See `docker-compose.yaml` for complete list of configurable options.
 
 ## 📂 Volumes
 
-- `./rootfs/data/dolibarr` - Data storage
-- `./rootfs/config/dolibarr` - Data storage
-- `./rootfs/data/db/mariadb/dolibarr` - Data storage
+- `./volumes/data/dolibarr` - Data storage
+- `./volumes/config/dolibarr` - Data storage
+- `./volumes/data/db/mariadb/dolibarr` - Data storage
 
 ## 🔐 Security
 
