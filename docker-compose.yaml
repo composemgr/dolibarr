@@ -16,6 +16,8 @@ services:
     logging: *default-logging
     networks:
       - dolibarr
+      - proxy
+      - cloudflare
     ports:
       - "172.17.0.1:8071:80"
     environment:
@@ -29,6 +31,8 @@ services:
       DOLI_ADMIN_PASSWORD: ${APP_ADMIN_PASS:-changeme_admin_password}
       DOLI_URL_ROOT: http://${BASE_HOST_NAME:-localhost}
       PHP_INI_DATE_TIMEZONE: ${TZ:-America/New_York}
+      CONTAINER_NAME: dolibarr-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
     volumes:
       - ./volumes/data/dolibarr:/var/www/documents
       - ./volumes/config/dolibarr:/var/www/html/custom
@@ -39,6 +43,22 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    labels:
+      - 'traefik.enable=true'
+      - 'cloudflare.enable=true'
+      - 'traefik.docker.network=proxy'
+      - 'cloudflare.service=http://dolibarr-app:80'
+      - 'cloudflare.hostname=dolibarr.${CLOUDFLARE_ZONE_NAME:-}'
+      - 'traefik.http.routers.dolibarr-app.entrypoints=http'
+      - 'traefik.http.routers.dolibarr-app-secure.tls=true'
+      - 'traefik.http.routers.dolibarr-app.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.middlewares.dolibarr-app-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.dolibarr-app.middlewares=dolibarr-app-https-redirect'
+      - 'traefik.http.routers.dolibarr-app-secure.entrypoints=https'
+      - 'traefik.http.routers.dolibarr-app-secure.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.routers.dolibarr-app-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.dolibarr-app-secure.service=dolibarr-app'
+      - 'traefik.http.services.dolibarr-app.loadbalancer.server.port=80'
 
   dolibarr-db:
     image: mariadb:latest
@@ -54,6 +74,7 @@ services:
       MARIADB_USER: ${DB_USER_NAME:-dolibarr}
       MARIADB_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
       MARIADB_ROOT_PASSWORD: ${DB_ADMIN_PASS:-changeme_admin_password}
+      CONTAINER_NAME: dolibarr-db
     volumes:
       - ./volumes/data/db/mariadb/dolibarr:/var/lib/mysql
     healthcheck:
@@ -66,3 +87,7 @@ networks:
   dolibarr:
     name: dolibarr
     external: false
+  proxy:
+    external: true
+  cloudflare:
+    external: true
