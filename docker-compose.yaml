@@ -1,5 +1,6 @@
 # nginx proxy address - http://172.17.0.1:8071
 
+name: dolibarr
 x-logging: &default-logging
   driver: json-file
   options:
@@ -9,18 +10,28 @@ x-logging: &default-logging
 services:
   dolibarr:
     image: tuxgasy/dolibarr:latest
+    pull_policy: always
     container_name: dolibarr-app
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - dolibarr
     ports:
-      - "8071:80"
+      - "172.17.0.1:8071:80"
     environment:
       TZ: ${TZ:-America/New_York}
+      DOLI_DB_HOST: dolibarr-db
+      DOLI_DB_HOST_PORT: 3306
+      DOLI_DB_USER: ${DB_USER_NAME:-dolibarr}
+      DOLI_DB_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
+      DOLI_DB_NAME: ${DB_CREATE_DATABASE_NAME:-dolibarr}
+      DOLI_ADMIN_LOGIN: ${APP_ADMIN_USER:-admin}
+      DOLI_ADMIN_PASSWORD: ${APP_ADMIN_PASS:-changeme_admin_password}
+      DOLI_URL_ROOT: http://${BASE_HOST_NAME:-localhost}
+      PHP_INI_DATE_TIMEZONE: ${TZ:-America/New_York}
     volumes:
-      - ./volumes/data/dolibarr:/data
-      - ./volumes/config/dolibarr:/config
+      - ./volumes/data/dolibarr:/var/www/documents
+      - ./volumes/config/dolibarr:/var/www/html/custom
     depends_on:
       - dolibarr-db
     healthcheck:
@@ -30,9 +41,10 @@ services:
       retries: 3
 
   dolibarr-db:
-    image: mariadb:11
+    image: mariadb:latest
+    pull_policy: always
     container_name: dolibarr-db
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - dolibarr
@@ -41,7 +53,7 @@ services:
       MARIADB_DATABASE: ${DB_CREATE_DATABASE_NAME:-dolibarr}
       MARIADB_USER: ${DB_USER_NAME:-dolibarr}
       MARIADB_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
-      MARIADB_ROOT_PASSWORD: ${DB_ADMIN_PASS:-changeme_root_password}
+      MARIADB_ROOT_PASSWORD: ${DB_ADMIN_PASS:-changeme_admin_password}
     volumes:
       - ./volumes/data/db/mariadb/dolibarr:/var/lib/mysql
     healthcheck:
@@ -52,4 +64,5 @@ services:
 
 networks:
   dolibarr:
+    name: dolibarr
     external: false
